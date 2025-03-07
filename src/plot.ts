@@ -1,7 +1,12 @@
 import { PCA } from "ml-pca";
-import Plotly from "plotly.js-dist-min";
+import Plotly from "plotly.js-basic-dist-min";
 
-export function plotEmbeddings(texts: string[], embeddings: number[][], containerId: string, reference: number) {
+export function plotEmbeddings(
+    texts: string[],
+    embeddings: number[][],
+    containerId: string,
+    reference: number
+) {
     const pca = new PCA(embeddings);
     const embeddingsPca = pca.predict(embeddings);
 
@@ -36,6 +41,6 @@ export function plotEmbeddings(texts: string[], embeddings: number[][], containe
             displayModeBar: false,
             frameMargins: 0,
             responsive: true,
-        },
+        }
     );
 }

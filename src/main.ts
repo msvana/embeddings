@@ -27,6 +27,20 @@ createApp({
             { deep: true }
         );
 
+        function deleteTextIfEmpty(index: number) {
+            if (index == texts.value.length - 1) {
+                return;
+            }
+
+            if (texts.value[index].text == "" && texts.value.length > 1) {
+                texts.value.splice(index, 1);
+            }
+
+            if (reference.value == index) {
+                reference.value = 0;
+            }
+        }
+
         async function getEmbeddings() {
             if (apiKey.value == "") {
                 error.value = "API key is required!";
@@ -77,6 +91,7 @@ createApp({
             error,
 
             getEmbeddings,
+            deleteTextIfEmpty,
         };
     },
 }).mount("#app");

@@ -71,7 +71,7 @@
                             id="input-text"
                             placeholder="Type your text here"
                             rows="2"
-                            @change="getEmbeddings"
+                            @change="deleteTextIfEmpty(idx); getEmbeddings()"
                             v-model="text.text"
                         ></textarea>
 
