@@ -1,15 +1,17 @@
 import type { Ref } from "vue";
 import { createApp, ref, watch } from "vue";
-import { AuthenticationError, cosineSimilarity, mistralEmbeddings } from "./embeddings";
+import { AuthenticationError, cosineSimilarity, mistralEmbeddings, openaiEmbeddings } from "./embeddings";
 import { plotEmbeddings } from "./plot";
 
 createApp({
     setup() {
         const texts: Ref<{ text: string }[]> = ref([{ text: "" }]);
+        const visualized: Ref<boolean> = ref(false);
         const distances: Ref<{ distance: number }[]> = ref([{ distance: 0 }]);
         const reference: Ref<number> = ref(0);
         const apiKey: Ref<string> = ref("");
         const error: Ref<string> = ref("");
+        const embeddingModel: Ref<string> = ref("mistral-embed");
 
         watch(
             texts,
@@ -24,7 +26,7 @@ createApp({
                     distances.value.push({ distance: 0 });
                 }
             },
-            { deep: true }
+            { deep: true },
         );
 
         function deleteTextIfEmpty(index: number) {
@@ -55,10 +57,18 @@ createApp({
             }
 
             try {
-                const embeddings = await mistralEmbeddings(
-                    textsFiltered.map((t) => t.text),
-                    apiKey.value
-                );
+                const textsClean = textsFiltered.map((t) => t.text);
+                let embeddings;
+
+                if (embeddingModel.value.startsWith("openai")) {
+                    embeddings = await openaiEmbeddings(
+                        textsClean,
+                        apiKey.value,
+                        embeddingModel.value.replace("openai-", ""),
+                    );
+                } else {
+                    embeddings = await mistralEmbeddings(textsClean, apiKey.value);
+                }
 
                 const currentReference = embeddings[reference.value];
 
@@ -71,8 +81,9 @@ createApp({
                     textsFiltered.map((t) => t.text),
                     embeddings,
                     "plot",
-                    reference.value
+                    reference.value,
                 );
+                visualized.value = true;
             } catch (e) {
                 if (e instanceof AuthenticationError) {
                     error.value = "Invalid API key!";
@@ -85,10 +96,12 @@ createApp({
 
         return {
             texts,
+            embeddingModel,
             apiKey,
             distances,
             reference,
             error,
+            visualized,
 
             getEmbeddings,
             deleteTextIfEmpty,

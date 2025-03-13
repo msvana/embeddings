@@ -8,82 +8,98 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css" />
     </head>
 
-    <body class="p-3">
+    <body class="m-3">
         <div class="container" id="app">
             <header class="mb-3 has-text-centered">
-                <h1 class="is-size-3">Text embeddings playground</h1>
+                <h1 class="is-size-3 py-3">Text embeddings playground</h1>
             </header>
 
-            <section class="columns">
-                <div class="column is-narrow-tablet">
-                    <div class="field">
-                        <label for="model" class="label">Select model:</label>
-                        <div class="select is-fullwidth" id="model">
-                            <select>
-                                <optgroup label="Mistral">
-                                    <option value="mistral-embed">mistral-embed</option>
-                                </optgroup>
-                            </select>
+            <section class="box">
+                <div class="columns">
+                    <div class="column is-narrow-tablet">
+                        <div class="field">
+                            <label for="model" class="label">Select model:</label>
+                            <div class="select is-fullwidth" id="model">
+                                <select v-model="embeddingModel" @change="getEmbeddings">
+                                    <optgroup label="Mistral">
+                                        <option value="mistral-embed">mistral-embed</option>
+                                    </optgroup>
+                                    <optgroup label="OpenAI">
+                                        <option value="openai-text-embedding-3-small">
+                                            text-embedding-3-small
+                                        </option>
+                                        <option value="openai-text-embedding-3-large">
+                                            text-embedding-3-large
+                                        </option>
+                                    </optgroup>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="column">
-                    <div class="field">
-                        <label for="api-key" class="label">API Key:</label>
-                        <input
-                            type="password"
-                            class="input"
-                            id="api-key"
-                            placeholder="Provide your API key"
-                            v-model="apiKey"
-                            @change="getEmbeddings"
-                        />
+                    <div class="column">
+                        <div class="field">
+                            <label for="api-key" class="label">API Key:</label>
+                            <input
+                                type="password"
+                                class="input"
+                                id="api-key"
+                                placeholder="Provide your API key"
+                                v-model="apiKey"
+                                @change="getEmbeddings"
+                            />
+                        </div>
                     </div>
                 </div>
             </section>
 
             <section class="notification is-danger is-light has-text-centered" v-if="error">
-                <p>
-                    {{error}}
-                </p>
+                <p>{{error}}</p>
             </section>
 
             <section class="columns">
                 <div class="column">
-                    <h2 class="is-size-5">Input texts</h2>
+                    <div class="box">
+                        <h2 class="is-size-5 has-text-centered">Input texts</h2>
 
-                    <div class="field mt-3" v-for="(text, idx) in texts">
-                        <label class="is-pulled-right radio">
-                            <input
-                                type="radio"
-                                id="reference"
-                                name="reference"
-                                v-model="reference"
-                                :value="idx"
-                            />
-                            is reference text
-                        </label>
+                        <div class="field mt-3" v-for="(text, idx) in texts">
+                            <label class="is-pulled-right radio">
+                                <input
+                                    type="radio"
+                                    id="reference"
+                                    name="reference"
+                                    v-model="reference"
+                                    :value="idx"
+                                />
+                                is reference text
+                            </label>
 
-                        <label for="input-text" class="label">Text {{idx + 1}}:</label>
-                        <textarea
-                            class="textarea"
-                            id="input-text"
-                            placeholder="Type your text here"
-                            rows="2"
-                            @change="deleteTextIfEmpty(idx); getEmbeddings()"
-                            v-model="text.text"
-                        ></textarea>
+                            <label for="input-text" class="label">Text {{idx + 1}}:</label>
+                            <textarea
+                                class="textarea"
+                                id="input-text"
+                                placeholder="Type your text here"
+                                rows="2"
+                                @change="deleteTextIfEmpty(idx); getEmbeddings()"
+                                v-model="text.text"
+                            ></textarea>
 
-                        <p v-if="reference !== idx && text.text !== ''">
-                            Score: <strong>{{distances[idx].distance}}</strong>
-                        </p>
+                            <p v-if="reference !== idx && text.text !== ''">
+                                Score: <strong>{{distances[idx].distance}}</strong>
+                            </p>
+                        </div>
                     </div>
                 </div>
 
                 <div class="column">
-                    <h2 class="is-size-5">Visualization</h2>
-                    <div id="plot"></div>
+                    <div class="box">
+                        <h2 class="is-size-5 has-text-centered">Visualization</h2>
+                        <div id="plot"></div>
+                        <p class="m-6 has-text-centered has-text-grey" v-if="!visualized">
+                            Add at least two texts to see the visualization
+                        </p>
+                        <p></p>
+                    </div>
                 </div>
             </section>
         </div>

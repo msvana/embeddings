@@ -2,7 +2,6 @@ export type Embedding = {
     embedding: number[];
 };
 
-
 export class AuthenticationError extends Error {}
 
 export async function mistralEmbeddings(texts: string[], apiKey: string): Promise<number[][]> {
@@ -16,6 +15,32 @@ export async function mistralEmbeddings(texts: string[], apiKey: string): Promis
             input: texts,
             model: "mistral-embed",
             encoding_format: "float",
+        }),
+    });
+
+    if (response.status === 401) {
+        throw new AuthenticationError("Invalid API key");
+    }
+
+    const result = await response.json();
+    const embeddings = result.data.map((e: Embedding) => e.embedding);
+    return embeddings;
+}
+
+export async function openaiEmbeddings(
+    texts: string[],
+    apiKey: string,
+    model: string,
+): Promise<number[][]> {
+    const response = await fetch("https://api.openai.com/v1/embeddings", {
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            input: texts,
+            model: model,
         }),
     });
 
