@@ -58,7 +58,7 @@
             </section>
 
             <section class="columns">
-                <div class="column">
+                <div class="column is-half-tablet">
                     <div class="box">
                         <h2 class="is-size-5 has-text-centered">Input texts</h2>
 
@@ -91,10 +91,12 @@
                     </div>
                 </div>
 
-                <div class="column">
+                <div class="column is-half-tablet">
                     <div class="box">
                         <h2 class="is-size-5 has-text-centered">Visualization</h2>
-                        <div id="plot"></div>
+                        <div style="height: 25rem" class="is-relative">
+                            <canvas id="plot"></canvas>
+                        </div>
                         <p class="m-6 has-text-centered has-text-grey" v-if="!visualized">
                             Add at least two texts to see the visualization
                         </p>
@@ -103,6 +105,14 @@
                 </div>
             </section>
         </div>
+
+        <footer class="m-6">
+            <p class="has-text-centered">
+                Created by <a href="https://svana.name" target="_blank">Miloš Švaňa</a><br />
+                Source code available on
+                <a href="https://github.com/msvana/embeddings/" target="_blank">GitHub</a>
+            </p>
+        </footer>
 
         <script src="src/main.ts" type="module"></script>
     </body>

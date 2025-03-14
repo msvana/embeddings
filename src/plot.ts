@@ -1,46 +1,81 @@
+import type { ChartItem } from "chart.js";
+import Chart from "chart.js/auto";
 import { PCA } from "ml-pca";
-import Plotly from "plotly.js-basic-dist-min";
+
+let chart: Chart | null = null;
 
 export function plotEmbeddings(
     texts: string[],
     embeddings: number[][],
     containerId: string,
-    reference: number
+    reference: number,
 ) {
+    if (chart === null) {
+        chart = initChart(containerId);
+    }
+
     const pca = new PCA(embeddings);
     const embeddingsPca = pca.predict(embeddings);
 
-    const colors = new Array(texts.length).fill(0);
-    colors[reference] = 1;
+    const colors = new Array(texts.length).fill("grey");
+    colors[reference] = "red";
 
-    const trace: Plotly.Data = {
-        x: embeddingsPca.getColumn(0),
-        y: embeddingsPca.getColumn(1),
-        mode: "markers",
-        type: "scatter",
-        marker: {
-            size: 15,
-            color: colors,
-        },
-        text: texts.map((t) => t.substring(0, 35)),
-    };
+    const data = [];
 
-    Plotly.react(
-        containerId,
-        [trace],
-        {
-            showlegend: false,
-            margin: {
-                b: 0,
-                t: 0,
-                l: 0,
-                r: 0,
+    for (let r = 0; r < embeddingsPca.rows; r++) {
+        const row = embeddingsPca.getRow(r);
+        data.push({ x: row[0], y: row[1] });
+    }
+
+    chart.data = {
+        datasets: [
+            {
+                data: data,
+                backgroundColor: colors,
             },
+        ],
+        labels: texts.map((t) => t.substring(0, 35)),
+    };
+    chart.update();
+}
+
+function initChart(containerId: string): Chart {
+    const ctx = document.getElementById(containerId) as ChartItem;
+
+    return new Chart(ctx, {
+        type: "scatter",
+        data: {
+            datasets: [
+                {
+                    data: [],
+                    backgroundColor: "red",
+                },
+            ],
         },
-        {
-            displayModeBar: false,
-            frameMargins: 0,
-            responsive: true,
-        }
-    );
+        options: {
+            plugins: {
+                legend: {
+                    display: false,
+                },
+            },
+            elements: {
+                point: {
+                    radius: 8,
+                },
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        display: false,
+                    },
+                },
+                y: {
+                    ticks: {
+                        display: false,
+                    },
+                },
+            },
+            maintainAspectRatio: false,
+        },
+    });
 }
