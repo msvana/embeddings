@@ -1,42 +1,5 @@
 <template>
-    <section class="box">
-        <div class="columns">
-            <div class="column is-narrow-tablet">
-                <div class="field">
-                    <label for="model" class="label">Select model:</label>
-                    <div class="select is-fullwidth" id="model">
-                        <select v-model="embeddingModel" @change="getEmbeddings">
-                            <optgroup label="Mistral">
-                                <option value="mistral-embed">mistral-embed</option>
-                            </optgroup>
-                            <optgroup label="OpenAI">
-                                <option value="openai-text-embedding-3-small">
-                                    text-embedding-3-small
-                                </option>
-                                <option value="openai-text-embedding-3-large">
-                                    text-embedding-3-large
-                                </option>
-                            </optgroup>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div class="column">
-                <div class="field">
-                    <label for="api-key" class="label">API Key:</label>
-                    <input
-                        type="password"
-                        class="input"
-                        id="api-key"
-                        placeholder="Provide your API key"
-                        v-model="apiKey"
-                        @change="getEmbeddings"
-                    />
-                </div>
-            </div>
-        </div>
-    </section>
+    <ModelSelector @models-updated="updateModels" />
 
     <section class="notification is-danger is-light has-text-centered" v-if="error">
         <p>{{ error }}</p>
@@ -82,7 +45,7 @@
         <div class="column is-half-tablet">
             <div class="box">
                 <h2 class="is-size-5 has-text-centered">Visualization</h2>
-                <div style="height: 25rem" class="is-relative" v-show=visualized>
+                <div style="height: 25rem" class="is-relative" v-show="visualized">
                     <canvas id="plot"></canvas>
                 </div>
                 <p class="m-6 has-text-centered has-text-grey" v-if="!visualized">
@@ -98,18 +61,24 @@
 import type { Ref } from "vue";
 import { ref, watch } from "vue";
 
-import * as Embeddings from "./embeddings";
-import { plotEmbeddings } from "./plot";
+import ModelSelector from "@/ModelSelector.vue";
+import * as Embeddings from "@/embeddings";
+import { plotEmbeddings } from "@/plot";
+import type { ModelSelection } from "@/Models";
 
+const modelsSelected: Ref<ModelSelection[]> = ref([]);
 const texts: Ref<{ text: string }[]> = ref([{ text: "" }]);
 const visualized: Ref<boolean> = ref(false);
 const distances: Ref<{ distance: number }[]> = ref([{ distance: 0 }]);
 const reference: Ref<number> = ref(0);
-const apiKey: Ref<string> = ref("");
 const error: Ref<string> = ref("");
-const embeddingModel: Ref<string> = ref("mistral-embed");
 
 watch(texts, ensureEmptyTextAtEnd, { deep: true });
+
+function updateModels(models: ModelSelection[]) {
+    modelsSelected.value = models;
+    getEmbeddings();
+}
 
 function ensureEmptyTextAtEnd(newTexts: { text: string }[]) {
     if (newTexts[newTexts.length - 1].text != "") {
@@ -144,7 +113,12 @@ function getCleanTexts(): string[] {
 }
 
 async function getEmbeddings() {
-    if (apiKey.value === "") {
+    const apiKey = modelsSelected.value[0].apiKey;
+    const modelNameSplit = modelsSelected.value[0].name.split(":");
+    const embeddingProvider = modelNameSplit[0];
+    const embeddingModel = modelNameSplit[1];
+
+    if (modelsSelected.value[0].apiKey === "") {
         error.value = "API key is required!";
         return;
     }
@@ -155,14 +129,10 @@ async function getEmbeddings() {
     try {
         let embeddings;
 
-        if (embeddingModel.value.startsWith("openai")) {
-            embeddings = await Embeddings.openaiEmbeddings(
-                textsClean,
-                apiKey.value,
-                embeddingModel.value.replace("openai-", ""),
-            );
+        if (embeddingProvider === "OpenAI") {
+            embeddings = await Embeddings.openaiEmbeddings(textsClean, apiKey, embeddingModel);
         } else {
-            embeddings = await Embeddings.mistralEmbeddings(textsClean, apiKey.value);
+            embeddings = await Embeddings.mistralEmbeddings(textsClean, apiKey);
         }
 
         const currentReference = embeddings[reference.value];
