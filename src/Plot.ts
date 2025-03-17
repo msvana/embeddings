@@ -2,7 +2,7 @@ import type { ChartItem } from "chart.js";
 import Chart from "chart.js/auto";
 import { PCA } from "ml-pca";
 
-let chart: Chart | null = null;
+const charts: {[key: string]: Chart} = {}
 
 export function plotEmbeddings(
     texts: string[],
@@ -10,10 +10,11 @@ export function plotEmbeddings(
     containerId: string,
     reference: number,
 ) {
-    if (chart === null) {
-        chart = initChart(containerId);
-    }
+    if(!(containerId in charts)) {
+        charts[containerId] = initChart(containerId);
+    } 
 
+    const chart = charts[containerId];
     const pca = new PCA(embeddings);
     const embeddingsPca = pca.predict(embeddings);
 

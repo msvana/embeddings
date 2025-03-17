@@ -5,5 +5,5 @@ export type ModelSelection = {
 
 export const MODELS_AVAILABLE = {
     Mistral: ["mistral-embed"],
-    OpenAI: ["text-embedding-small", "text-embedding-large"],
+    OpenAI: ["text-embedding-3-small", "text-embedding-3-large"],
 };

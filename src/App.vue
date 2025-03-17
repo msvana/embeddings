@@ -1,5 +1,5 @@
 <template>
-    <ModelSelector @models-updated="updateModels" />
+    <ModelSelector @models-updated="onUpdateModels" />
 
     <section class="notification is-danger is-light has-text-centered" v-if="error">
         <p>{{ error }}</p>
@@ -18,6 +18,7 @@
                             name="reference"
                             v-model="reference"
                             :value="idx"
+                            @change="updateEmbeddings"
                         />
                         is reference text
                     </label>
@@ -30,13 +31,21 @@
                         rows="2"
                         @change="
                             deleteTextIfEmpty(idx);
-                            getEmbeddings();
+                            updateEmbeddings();
                         "
                         v-model="text.text"
                     ></textarea>
 
-                    <p v-if="reference !== idx && text.text !== ''">
-                        Score: <strong>{{ distances[idx].distance }}</strong>
+                    <p v-if="reference !== idx && embeddingsResultsA.distances.length > idx">
+                        Scores:
+                        <span class="tag">
+                            {{ modelsSelected[0].name }}
+                            {{ embeddingsResultsA.distances[idx] }}
+                        </span>
+                        <span class="tag" v-if="embeddingsResultsB.distances.length > idx">
+                            {{ modelsSelected[1].name }}
+                            {{ embeddingsResultsB.distances[idx] }}
+                        </span>
                     </p>
                 </div>
             </div>
@@ -45,10 +54,24 @@
         <div class="column is-half-tablet">
             <div class="box">
                 <h2 class="is-size-5 has-text-centered">Visualization</h2>
-                <div style="height: 25rem" class="is-relative" v-show="visualized">
-                    <canvas id="plot"></canvas>
+                <div
+                    style="height: 25rem"
+                    class="is-relative"
+                    v-show="embeddingsResultsA.visualized"
+                >
+                    <canvas id="plot-a"></canvas>
                 </div>
-                <p class="m-6 has-text-centered has-text-grey" v-if="!visualized">
+                <div
+                    style="height: 25rem"
+                    class="is-relative"
+                    v-show="embeddingsResultsB.visualized"
+                >
+                    <canvas id="plot-b"></canvas>
+                </div>
+                <p
+                    class="m-6 has-text-centered has-text-grey"
+                    v-if="!embeddingsResultsA.visualized"
+                >
                     Add at least two texts to see the visualization
                 </p>
                 <p></p>
@@ -63,21 +86,49 @@ import { ref, watch } from "vue";
 
 import ModelSelector from "@/ModelSelector.vue";
 import * as Embeddings from "@/embeddings";
-import { plotEmbeddings } from "@/plot";
+import { plotEmbeddings } from "@/Plot";
 import type { ModelSelection } from "@/Models";
+
+type EmbeddingResults = {
+    visualized: boolean;
+    distances: number[];
+    embeddings: number[][];
+    plotContainerId: string;
+};
+
+class InvalidApiKeyError extends Error {}
 
 const modelsSelected: Ref<ModelSelection[]> = ref([]);
 const texts: Ref<{ text: string }[]> = ref([{ text: "" }]);
-const visualized: Ref<boolean> = ref(false);
-const distances: Ref<{ distance: number }[]> = ref([{ distance: 0 }]);
 const reference: Ref<number> = ref(0);
 const error: Ref<string> = ref("");
 
+const embeddingsResultsA: Ref<EmbeddingResults> = ref({
+    visualized: false,
+    distances: [0],
+    embeddings: [],
+    plotContainerId: "plot-a",
+});
+
+const embeddingsResultsB: Ref<EmbeddingResults> = ref({
+    visualized: false,
+    distances: [0],
+    embeddings: [],
+    plotContainerId: "plot-b",
+});
+
+let firstModelUpdate: boolean = true;
+
 watch(texts, ensureEmptyTextAtEnd, { deep: true });
 
-function updateModels(models: ModelSelection[]) {
+function onUpdateModels(models: ModelSelection[]) {
     modelsSelected.value = models;
-    getEmbeddings();
+
+    if (!firstModelUpdate) {
+        updateEmbeddings();
+    }
+
+    firstModelUpdate = false;
 }
 
 function ensureEmptyTextAtEnd(newTexts: { text: string }[]) {
@@ -85,10 +136,6 @@ function ensureEmptyTextAtEnd(newTexts: { text: string }[]) {
         newTexts.push({
             text: "",
         });
-    }
-
-    if (distances.value.length < newTexts.length) {
-        distances.value.push({ distance: 0 });
     }
 }
 
@@ -112,45 +159,69 @@ function getCleanTexts(): string[] {
     return textsClean;
 }
 
-async function getEmbeddings() {
-    const apiKey = modelsSelected.value[0].apiKey;
-    const modelNameSplit = modelsSelected.value[0].name.split(":");
-    const embeddingProvider = modelNameSplit[0];
-    const embeddingModel = modelNameSplit[1];
-
-    if (modelsSelected.value[0].apiKey === "") {
-        error.value = "API key is required!";
-        return;
-    }
-
+async function updateEmbeddings() {
     error.value = "";
-    const textsClean = getCleanTexts();
+    embeddingsResultsA.value.visualized = false;
+    embeddingsResultsB.value.visualized = false;
 
     try {
-        let embeddings;
+        await updateEmbeddingsForModel(modelsSelected.value[0], embeddingsResultsA.value);
 
-        if (embeddingProvider === "OpenAI") {
-            embeddings = await Embeddings.openaiEmbeddings(textsClean, apiKey, embeddingModel);
-        } else {
-            embeddings = await Embeddings.mistralEmbeddings(textsClean, apiKey);
+        if (modelsSelected.value.length == 2) {
+            await updateEmbeddingsForModel(modelsSelected.value[1], embeddingsResultsB.value);
         }
-
-        const currentReference = embeddings[reference.value];
-
-        distances.value = embeddings.map((e: number[]) => {
-            return { distance: Embeddings.cosineSimilarity(currentReference, e) };
-        });
-
-        distances.value.push({ distance: 0 });
-        plotEmbeddings(textsClean, embeddings, "plot", reference.value);
-        visualized.value = true;
     } catch (e) {
-        if (e instanceof Embeddings.AuthenticationError) {
-            error.value = "Invalid API key!";
+        if (e instanceof InvalidApiKeyError) {
             return;
         }
 
+        if (e instanceof Embeddings.AuthenticationError) {
+            error.value = "One or more API keys are invalid";
+        }
+
         throw e;
+    }
+}
+
+async function updateEmbeddingsForModel(modelSelection: ModelSelection, results: EmbeddingResults) {
+    const modelNameSplit = modelSelection.name.split(":");
+    const embeddingProvider = modelNameSplit[0];
+    const embeddingModel = modelNameSplit[1];
+
+    if (modelSelection.apiKey === "") {
+        error.value = "API key is required!";
+        throw new InvalidApiKeyError();
+    }
+
+    const texts = getCleanTexts();
+
+    if (texts.length == 0) {
+        return;
+    }
+
+    switch (embeddingProvider) {
+        case "OpenAI":
+            results.embeddings = await Embeddings.openaiEmbeddings(
+                texts,
+                modelSelection.apiKey,
+                embeddingModel,
+            );
+            break;
+        case "Mistral":
+            results.embeddings = await Embeddings.mistralEmbeddings(texts, modelSelection.apiKey);
+            break;
+    }
+
+    const currentReference = results.embeddings[reference.value];
+    results.distances = results.embeddings.map((e: number[]) => {
+        return Embeddings.cosineSimilarity(currentReference, e);
+    });
+
+    console.log(texts.length);
+
+    if (texts.length >= 2) {
+        plotEmbeddings(texts, results.embeddings, results.plotContainerId, reference.value);
+        results.visualized = true;
     }
 }
 </script>
