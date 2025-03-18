@@ -37,14 +37,15 @@
                     ></textarea>
 
                     <p v-if="reference !== idx && embeddingsResultsA.distances.length > idx">
-                        Scores:
-                        <span class="tag">
-                            {{ modelsSelected[0].name }}
-                            {{ embeddingsResultsA.distances[idx] }}
+                        Scores:<br>
+                        <span class="tag is-primary is-medium mb-1">
+                            {{ modelsSelected[0].name }}:&nbsp;
+                            <b>{{ embeddingsResultsA.distances[idx].toFixed(3) }}</b>
                         </span>
-                        <span class="tag" v-if="embeddingsResultsB.distances.length > idx">
-                            {{ modelsSelected[1].name }}
-                            {{ embeddingsResultsB.distances[idx] }}
+                        &nbsp;
+                        <span class="tag is-info is-medium mb-1" v-if="embeddingsResultsB.distances.length > idx">
+                            {{ modelsSelected[1].name }}:&nbsp;
+                            <b>{{ embeddingsResultsB.distances[idx].toFixed(3) }}</b>
                         </span>
                     </p>
                 </div>
@@ -54,6 +55,9 @@
         <div class="column is-half-tablet">
             <div class="box">
                 <h2 class="is-size-5 has-text-centered">Visualization</h2>
+                <h3 class="is-size-6 has-text-centered mt-2" v-if="modelsSelected.length > 0">
+                    {{ modelsSelected[0].name }}
+                </h3>
                 <div
                     style="height: 25rem"
                     class="is-relative"
@@ -61,6 +65,9 @@
                 >
                     <canvas id="plot-a"></canvas>
                 </div>
+                <h3 class="is-size-6 has-text-centered mt-3" v-if="modelsSelected.length > 1">
+                    {{ modelsSelected[1].name }}
+                </h3>
                 <div
                     style="height: 25rem"
                     class="is-relative"
@@ -123,6 +130,12 @@ watch(texts, ensureEmptyTextAtEnd, { deep: true });
 
 function onUpdateModels(models: ModelSelection[]) {
     modelsSelected.value = models;
+
+    if (modelsSelected.value.length == 1) {
+        embeddingsResultsB.value.visualized = false;
+        embeddingsResultsB.value.embeddings = [];
+        embeddingsResultsB.value.distances = [0];
+    }
 
     if (!firstModelUpdate) {
         updateEmbeddings();
@@ -204,7 +217,7 @@ async function updateEmbeddingsForModel(modelSelection: ModelSelection, results:
             results.embeddings = await Embeddings.openaiEmbeddings(
                 texts,
                 modelSelection.apiKey,
-                embeddingModel,
+                embeddingModel
             );
             break;
         case "Mistral":

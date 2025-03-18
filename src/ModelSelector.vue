@@ -42,6 +42,7 @@
                     <label for="model" class="label">Select model:</label>
                     <div class="select is-fullwidth" id="model">
                         <select v-model="modelB.name" @change="modelsUpdated">
+                            <option value="">(no model)</option>
                             <optgroup
                                 v-for="(models, provider) in MODELS_AVAILABLE"
                                 :label="provider"
