@@ -18,8 +18,7 @@
                             name="reference"
                             v-model="reference"
                             :value="idx"
-                            @change="updateEmbeddings"
-                        />
+                            @change="updateEmbeddings" />
                         is reference text
                     </label>
 
@@ -33,17 +32,18 @@
                             deleteTextIfEmpty(idx);
                             updateEmbeddings();
                         "
-                        v-model="text.text"
-                    ></textarea>
+                        v-model="text.text"></textarea>
 
                     <p v-if="reference !== idx && embeddingsResultsA.distances.length > idx">
-                        Scores:<br>
+                        Scores:<br />
                         <span class="tag is-primary is-medium mb-1">
                             {{ modelsSelected[0].name }}:&nbsp;
                             <b>{{ embeddingsResultsA.distances[idx].toFixed(3) }}</b>
                         </span>
                         &nbsp;
-                        <span class="tag is-info is-medium mb-1" v-if="embeddingsResultsB.distances.length > idx">
+                        <span
+                            class="tag is-info is-medium mb-1"
+                            v-if="embeddingsResultsB.distances.length > idx">
                             {{ modelsSelected[1].name }}:&nbsp;
                             <b>{{ embeddingsResultsB.distances[idx].toFixed(3) }}</b>
                         </span>
@@ -55,30 +55,31 @@
         <div class="column is-half-tablet">
             <div class="box">
                 <h2 class="is-size-5 has-text-centered">Visualization</h2>
-                <h3 class="is-size-6 has-text-centered mt-2" v-if="modelsSelected.length > 0">
+                <h3
+                    class="is-size-6 has-text-centered mt-2"
+                    v-if="modelsSelected.length > 0 && embeddingsResultsA.visualized">
                     {{ modelsSelected[0].name }}
                 </h3>
                 <div
                     style="height: 25rem"
                     class="is-relative"
-                    v-show="embeddingsResultsA.visualized"
-                >
+                    v-show="embeddingsResultsA.visualized">
                     <canvas id="plot-a"></canvas>
                 </div>
-                <h3 class="is-size-6 has-text-centered mt-3" v-if="modelsSelected.length > 1">
+                <h3
+                    class="is-size-6 has-text-centered mt-3"
+                    v-if="modelsSelected.length > 1 && embeddingsResultsB.visualized">
                     {{ modelsSelected[1].name }}
                 </h3>
                 <div
                     style="height: 25rem"
                     class="is-relative"
-                    v-show="embeddingsResultsB.visualized"
-                >
+                    v-show="embeddingsResultsB.visualized">
                     <canvas id="plot-b"></canvas>
                 </div>
                 <p
                     class="m-6 has-text-centered has-text-grey"
-                    v-if="!embeddingsResultsA.visualized"
-                >
+                    v-if="!embeddingsResultsA.visualized">
                     Add at least two texts to see the visualization
                 </p>
                 <p></p>
@@ -92,7 +93,7 @@ import type { Ref } from "vue";
 import { ref, watch } from "vue";
 
 import ModelSelector from "@/ModelSelector.vue";
-import * as Embeddings from "@/embeddings";
+import * as Embeddings from "@/Embeddings";
 import { plotEmbeddings } from "@/Plot";
 import type { ModelSelection } from "@/Models";
 
@@ -203,7 +204,7 @@ async function updateEmbeddingsForModel(modelSelection: ModelSelection, results:
     const embeddingProvider = modelNameSplit[0];
     const embeddingModel = modelNameSplit[1];
 
-    if (modelSelection.apiKey === "") {
+    if (modelSelection.apiKey === "" && modelSelection.apiKeyRequired) {
         error.value = "API key is required!";
         throw new InvalidApiKeyError();
     }
@@ -225,14 +226,14 @@ async function updateEmbeddingsForModel(modelSelection: ModelSelection, results:
         case "Mistral":
             results.embeddings = await Embeddings.mistralEmbeddings(texts, modelSelection.apiKey);
             break;
+        case "SentenceTransformers":
+            results.embeddings = await Embeddings.sbertEmbeddings(texts);
     }
 
     const currentReference = results.embeddings[reference.value];
     results.distances = results.embeddings.map((e: number[]) => {
         return Embeddings.cosineSimilarity(currentReference, e);
     });
-
-    console.log(texts.length);
 
     if (texts.length >= 2) {
         plotEmbeddings(texts, results.embeddings, results.plotContainerId, reference.value);
