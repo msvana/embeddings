@@ -30,7 +30,7 @@ export async function mistralEmbeddings(texts: string[], apiKey: string): Promis
 export async function openaiEmbeddings(
     texts: string[],
     apiKey: string,
-    model: string,
+    model: string
 ): Promise<number[][]> {
     const response = await fetch("https://api.openai.com/v1/embeddings", {
         method: "POST",
@@ -51,6 +51,25 @@ export async function openaiEmbeddings(
     const result = await response.json();
     const embeddings = result.data.map((e: Embedding) => e.embedding);
     return embeddings;
+}
+
+export async function sbertEmbeddings(texts: string[]): Promise<number[][]> {
+    const response = await fetch("https://embeddings.swarm.svana.name/embeddings", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            inputs: texts,
+        }),
+    });
+
+    if (response.status === 429) {
+        throw new AuthenticationError("Rate limit exceeded");
+    }
+
+    const result = await response.json();
+    return result.embeddings;
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {
