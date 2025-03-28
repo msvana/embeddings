@@ -129,6 +129,8 @@ let firstModelUpdate: boolean = true;
 watch(texts, ensureEmptyTextAtEnd, { deep: true });
 
 function onUpdateModels(models: ModelSelection[]) {
+    console.log(models);
+
     modelsSelected.value = models;
 
     if (modelsSelected.value.length == 1) {
