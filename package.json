@@ -8,7 +8,8 @@
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
-    "type-check": "vue-tsc --build"
+    "type-check": "vue-tsc --build",
+    "test": "vitest"
   },
   "dependencies": {
     "chart.js": "^4.4.8",
@@ -24,6 +25,7 @@
     "typescript": "~5.7.3",
     "vite": "^6.1.0",
     "vite-plugin-vue-devtools": "^7.7.2",
+    "vitest": "^3.0.9",
     "vue-tsc": "^2.2.2"
   }
 }
