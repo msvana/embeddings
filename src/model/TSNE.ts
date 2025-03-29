@@ -27,23 +27,62 @@ export function calculateAffinities(X: number[][], sigma: number): number[][] {
     return affinities;
 }
 
-export function perplexity(affinities: number[][]): number {
-    const Hs = new Array(affinities.length);
+export function findBestSigmas(X: number[][], perp: number, maxIterations: number = 50): number[] {
+    const lowerBounds = new Array(X.length).fill(1e-6);
+    const upperBounds = new Array(X.length).fill(calculateInitialUpperBound(X));
+    const sigmas = new Array(X.length).fill((upperBounds[0] + lowerBounds[0]) / 2);
 
-    for (let i = 0; i < affinities.length; i++) {
-        let H = 0;
+    for (let i = 0; i < sigmas.length; i++) {
+        for (let j = 0; j < maxIterations; j++) {
+            const affinities = calculateAffinities(X, sigmas[i]);
+            const currentPerplexity = calculatePerplexity(affinities[i]);
 
-        for (let j = 0; j < affinities.length; j++) {
-            let P = affinities[i][j];
-            H += P * Math.log2(P + 1e-10);
+            if (Math.abs(perp - currentPerplexity) <= 1e-6) {
+                break;
+            }
+
+            if (currentPerplexity < perp) {
+                lowerBounds[i] = sigmas[i];
+            } else {
+                upperBounds[i] = sigmas[i];
+            }
+
+            sigmas[i] = (upperBounds[i] + lowerBounds[i]) / 2;
         }
-
-        Hs[i] = -H;
     }
 
-    const perplexities = Hs.map((H: number) => Math.pow(2, H));
-    const perplexitiesSum = perplexities.reduce((acc, curr) => acc + curr, 0);
-    return perplexitiesSum / perplexities.length;
+    return sigmas;
+}
+
+export function calculatePerplexity(affinities: number[]): number {
+    let H = 0;
+
+    for (let i = 0; i < affinities.length; i++) {
+        let P = affinities[i];
+        H += P * Math.log2(P + 1e-10);
+    }
+
+    H = -H;
+
+    const perplexity = Math.pow(2, H);
+    return perplexity;
+}
+
+export function calculateInitialUpperBound(X: number[][]): number {
+    let maxDistance = 0;
+    let distance;
+
+    for (let i = 0; i < X.length; i++) {
+        for (let j = i + 1; j < X.length; j++) {
+            distance = euclideanDistanceSquared(X[i], X[j]);
+            if (maxDistance < distance) {
+                maxDistance = distance;
+            }
+        }
+    }
+
+    const upperBound = Math.log(maxDistance + 1e-6) + 10;
+    return upperBound;
 }
 
 function euclideanDistanceSquared(a: number[], b: number[]): number {
