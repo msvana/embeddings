@@ -27,6 +27,25 @@ export function calculateAffinities(X: number[][], sigma: number): number[][] {
     return affinities;
 }
 
+export function perplexity(affinities: number[][]): number {
+    const Hs = new Array(affinities.length);
+
+    for (let i = 0; i < affinities.length; i++) {
+        let H = 0;
+
+        for (let j = 0; j < affinities.length; j++) {
+            let P = affinities[i][j];
+            H += P * Math.log2(P + 1e-10);
+        }
+
+        Hs[i] = -H;
+    }
+
+    const perplexities = Hs.map((H: number) => Math.pow(2, H));
+    const perplexitiesSum = perplexities.reduce((acc, curr) => acc + curr, 0);
+    return perplexitiesSum / perplexities.length;
+}
+
 function euclideanDistanceSquared(a: number[], b: number[]): number {
     let sum: number = 0;
 

@@ -23,5 +23,16 @@ test("calculates affinities properly", () => {
 
         expect(Math.abs(sum - 1)).to.lessThanOrEqual(1e-6);
     }
-
 });
+
+test("calculates perplexity correctly", () => {
+    const affinities = [
+        [0, 0.4, 0.3, 0.3],
+        [0.2, 0, 0.5, 0.3],
+        [0.1, 0.3, 0, 0.6],
+        [0.2, 0.4, 0, 0.4]
+    ];
+
+    const perplexity = TSNE.perplexity(affinities);
+    expect(Math.abs(perplexity - 2.7743)).to.lessThan(1e-4)
+})
