@@ -1,15 +1,18 @@
 export function transform(
     X: number[][],
     nDims: number,
-    perp: number = 5,
+    perp: number = 3,
     nIter: number = 100,
 ): number[][] {
     const sigmas = findBestSigmas(X, perp);
     const affinities = calculateSymmetricAffinities(X, sigmas);
+
+    let momentum: number;
     let Y = initRandomProjection(X.length, nDims);
     let YPrev = structuredClone(Y);
 
     for (let i = 0; i < nIter; i++) {
+        momentum = getMomentum(i, nIter);
         const gradient = calculateGradient(affinities, Y);
         const YNew = new Array(Y.length);
 
@@ -17,10 +20,11 @@ export function transform(
             YNew[j] = new Array(Y[j].length);
 
             for (let k = 0; k < Y[j].length; k++) {
-                YNew[j][k] = Y[j][k] + gradient[j][k] * 1e-4;
+                YNew[j][k] = Y[j][k] + gradient[j][k] * 1 + momentum * (Y[j][k] - YPrev[j][k]);
             }
         }
 
+        console.log(getCost(affinities, Y));
         YPrev = Y;
         Y = YNew;
     }
@@ -108,7 +112,7 @@ export function initRandomProjection(nSamples: number, nDims: number): number[][
     for (let i = 0; i < nSamples; i++) {
         Y[i] = new Array(nDims);
         for (let j = 0; j < nDims; j++) {
-            Y[i][j] = Math.random() / 1e2 - 5e-3;
+            Y[i][j] = Math.random() / 1e1 - 5e-2;
         }
     }
 
@@ -125,7 +129,7 @@ export function calculateGradient(affinities: number[][], Y: number[][]): number
         for (let j = 0; j < Y.length; j++) {
             const coef =
                 (affinities[i][j] - projectedAffinities[i][j]) *
-                (1 + euclideanDistanceSquared(Y[i], Y[j]));
+                Math.pow(1 + euclideanDistanceSquared(Y[i], Y[j]), -1);
 
             for (let k = 0; k < Y[i].length; k++) {
                 gradient[i][k] += 4 * coef * (Y[i][k] - Y[j][k]);
@@ -203,4 +207,27 @@ function euclideanDistanceSquared(a: number[], b: number[]): number {
     }
 
     return sum;
+}
+
+function getMomentum(iterCurr: number, iterMax: number): number {
+    const momentumStart = 0.5;
+    const momentumEnd = 0.8;
+    const momentum = momentumStart + (momentumEnd - momentumStart) * (iterCurr / iterMax);
+    return momentum;
+}
+
+function getCost(P: number[][], Y: number[][]): number {
+    const Q = calculateProjectedAffinity(Y);
+    let cost = 0;
+
+    for (let i = 0; i < Y.length; i++) {
+        for (let j = 0; j < Y.length; j++) {
+            if (i === j) {
+                continue;
+            }
+            cost += P[i][j] * Math.log(P[i][j] / Q[i][j]);
+        }
+    }
+
+    return cost;
 }

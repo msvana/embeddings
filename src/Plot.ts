@@ -1,6 +1,7 @@
 import type { ChartItem } from "chart.js";
 import Chart from "chart.js/auto";
 import { PCA } from "ml-pca";
+import * as TSNE from "@/model/TSNE";
 
 const charts: {[key: string]: Chart} = {}
 
@@ -15,17 +16,18 @@ export function plotEmbeddings(
     } 
 
     const chart = charts[containerId];
-    const pca = new PCA(embeddings);
-    const embeddingsPca = pca.predict(embeddings);
+    // const pca = new PCA(embeddings);
+    // const embeddingsPca = pca.predict(embeddings);
+    const embeddingsPca = TSNE.transform(embeddings, 2);
+    console.log(embeddingsPca);
 
     const colors = new Array(texts.length).fill("grey");
     colors[reference] = "red";
 
     const data = [];
 
-    for (let r = 0; r < embeddingsPca.rows; r++) {
-        const row = embeddingsPca.getRow(r);
-        data.push({ x: row[0], y: row[1] });
+    for (let r = 0; r < embeddingsPca.length; r++) {
+        data.push({ x: embeddingsPca[r][0], y: embeddingsPca[r][1] });
     }
 
     chart.data = {
