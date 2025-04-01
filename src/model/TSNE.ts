@@ -2,7 +2,7 @@ export function transform(
     X: number[][],
     nDims: number,
     perp: number = 3,
-    nIter: number = 100,
+    nIter: number = 1000,
 ): number[][] {
     const sigmas = findBestSigmas(X, perp);
     const affinities = calculateSymmetricAffinities(X, sigmas);
@@ -20,11 +20,11 @@ export function transform(
             YNew[j] = new Array(Y[j].length);
 
             for (let k = 0; k < Y[j].length; k++) {
-                YNew[j][k] = Y[j][k] + gradient[j][k] * 1 + momentum * (Y[j][k] - YPrev[j][k]);
+                YNew[j][k] =
+                    Y[j][k] + gradient[j * nDims + k] * 1 + momentum * (Y[j][k] - YPrev[j][k]);
             }
         }
 
-        console.log(getCost(affinities, Y));
         YPrev = Y;
         Y = YNew;
     }
@@ -33,7 +33,8 @@ export function transform(
 }
 
 export function calculateSymmetricAffinities(X: number[][], sigmas: number[]) {
-    const affinities = calculateAffinities(X, sigmas);
+    const distances = getPairwiseDistances(X);
+    const affinities = calculateAffinities(distances, sigmas);
     const symmetricAffinities = new Array(X.length);
 
     for (let i = 0; i < X.length; i++) {
@@ -51,27 +52,23 @@ export function calculateSymmetricAffinities(X: number[][], sigmas: number[]) {
     return symmetricAffinities;
 }
 
-export function calculateAffinities(X: number[][], sigmas: number[]): number[][] {
-    const affinities = new Array(X.length);
-    const affinitySums = new Array(X.length).fill(0);
+export function calculateAffinities(distances: number[], sigmas: number[]): number[][] {
+    const n = Math.trunc(Math.sqrt(distances.length));
+    const affinities = new Array(n);
+    const affinitySums = new Array(n).fill(0);
 
-    for (let i = 0; i < X.length; i++) {
-        affinities[i] = new Array(X.length).fill(0);
+    for (let i = 0; i < n; i++) {
+        affinities[i] = new Array(n).fill(0);
 
-        for (let j = 0; j < X.length; j++) {
-            if (i === j) {
-                continue;
-            }
-
-            const distance = euclideanDistanceSquared(X[i], X[j]);
-            const affinity = Math.exp(-distance / (2 * sigmas[i] * sigmas[i]));
+        for (let j = 0; j < n; j++) {
+            const affinity = Math.exp(-distances[n * i + j] / (2 * sigmas[i] * sigmas[i]));
             affinities[i][j] = affinity;
             affinitySums[i] += affinity;
         }
     }
 
-    for (let i = 0; i < X.length; i++) {
-        for (let j = 0; j < X.length; j++) {
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
             affinities[i][j] /= affinitySums[i];
         }
     }
@@ -83,10 +80,11 @@ export function findBestSigmas(X: number[][], perp: number, maxIterations: numbe
     const lowerBounds = new Array(X.length).fill(1e-3);
     const upperBounds = new Array(X.length).fill(calculateInitialUpperBound(X));
     const sigmas = new Array(X.length).fill((upperBounds[0] + lowerBounds[0]) / 2);
+    const distances = getPairwiseDistances(X);
 
     for (let i = 0; i < sigmas.length; i++) {
         for (let j = 0; j < maxIterations; j++) {
-            const affinities = calculateAffinities(X, sigmas);
+            const affinities = calculateAffinities(distances, sigmas);
             const currentPerplexity = calculatePerplexity(affinities[i]);
 
             if (Math.abs(perp - currentPerplexity) <= 1e-6) {
@@ -119,20 +117,19 @@ export function initRandomProjection(nSamples: number, nDims: number): number[][
     return Y;
 }
 
-export function calculateGradient(affinities: number[][], Y: number[][]): number[][] {
-    const gradient = new Array(Y.length);
+export function calculateGradient(affinities: number[][], Y: number[][]): number[] {
+    const nDim = Y[0].length;
+    const gradient = new Array(Y.length * nDim).fill(0);
     const projectedAffinities = calculateProjectedAffinity(Y);
 
     for (let i = 0; i < Y.length; i++) {
-        gradient[i] = new Array(Y[i].length).fill(0);
-
         for (let j = 0; j < Y.length; j++) {
             const coef =
-                (affinities[i][j] - projectedAffinities[i][j]) *
+                (affinities[i][j] - projectedAffinities[i * Y.length + j]) *
                 Math.pow(1 + euclideanDistanceSquared(Y[i], Y[j]), -1);
 
             for (let k = 0; k < Y[i].length; k++) {
-                gradient[i][k] += 4 * coef * (Y[i][k] - Y[j][k]);
+                gradient[i * nDim + k] += 4 * coef * (Y[i][k] - Y[j][k]);
             }
         }
     }
@@ -140,28 +137,29 @@ export function calculateGradient(affinities: number[][], Y: number[][]): number
     return gradient;
 }
 
-export function calculateProjectedAffinity(Y: number[][]): number[][] {
-    const affinities = new Array(Y.length);
-    const affinitySums = new Array(Y.length).fill(0);
+export function calculateProjectedAffinity(Y: number[][]): number[] {
+    const n = Y.length;
+    const affinities = new Array(n * n).fill(0);
+    const affinitySums = new Array(n).fill(0);
 
-    for (let i = 0; i < Y.length; i++) {
-        affinities[i] = new Array(Y.length).fill(0);
-
-        for (let j = 0; j < Y.length; j++) {
+    for (let i = 0; i < n; i++) {
+        for (let j = i + 1; j < n; j++) {
             if (i === j) {
                 continue;
             }
 
             const distance = euclideanDistanceSquared(Y[i], Y[j]);
             const affinity = Math.pow(1 + distance, -1);
-            affinities[i][j] = affinity;
+            affinities[i * n + j] = affinity;
+            affinities[j * n + i] = affinity;
             affinitySums[i] += affinity;
+            affinitySums[j] += affinity;
         }
     }
 
     for (let i = 0; i < Y.length; i++) {
         for (let j = 0; j < Y.length; j++) {
-            affinities[i][j] /= affinitySums[i];
+            affinities[i * n + j] /= affinitySums[i];
         }
     }
 
@@ -199,11 +197,32 @@ export function calculateInitialUpperBound(X: number[][]): number {
     return upperBound;
 }
 
+function getPairwiseDistances(X: number[][]): number[] {
+    const distances = new Array(X.length * X.length);
+    let distance;
+
+    for (let i = 0; i < X.length; i++) {
+        for (let j = i; j < X.length; j++) {
+            if (i === j) {
+                distances[X.length * i + j] = 0;
+            }
+
+            distance = euclideanDistanceSquared(X[i], X[j]);
+            distances[X.length * i + j] = distance;
+            distances[X.length * j + i] = distance;
+        }
+    }
+
+    return distances;
+}
+
 function euclideanDistanceSquared(a: number[], b: number[]): number {
     let sum: number = 0;
+    let pointDistance: number = 0;
 
     for (let i = 0; i < a.length; i++) {
-        sum += Math.pow(a[i] - b[i], 2);
+        pointDistance = a[i] - b[i];
+        sum += pointDistance * pointDistance;
     }
 
     return sum;
