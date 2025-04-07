@@ -7,7 +7,14 @@ from sentence_transformers import SentenceTransformer
 model = SentenceTransformer("all-MiniLM-L6-v2")  # type: ignore
 
 app = flask.Flask(__name__)
-CORS(app, origins=["https://embeddings.svana.name", "http://127.0.0.1:5173"])
+CORS(
+    app,
+    origins=[
+        "https://embeddings.svana.name",
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    ],
+)
 limiter = Limiter(get_remote_address, app=app)
 
 
