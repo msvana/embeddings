@@ -1,34 +1,25 @@
 import type { ChartItem } from "chart.js";
 import Chart from "chart.js/auto";
 import { PCA } from "ml-pca";
-import * as TSNE from "@/model/TSNE";
+import { TSNE } from "tsne";
 
-const charts: {[key: string]: Chart} = {}
+const charts: { [key: string]: Chart } = {};
 
 export function plotEmbeddings(
     texts: string[],
     embeddings: number[][],
     containerId: string,
     reference: number,
+    visualization: "pca" | "tsne",
 ) {
-    if(!(containerId in charts)) {
+    if (!(containerId in charts)) {
         charts[containerId] = initChart(containerId);
-    } 
+    }
 
     const chart = charts[containerId];
-    // const pca = new PCA(embeddings);
-    // const embeddingsPca = pca.predict(embeddings);
-    const embeddingsPca = TSNE.transform(embeddings, 2);
-    console.log(embeddingsPca);
-
+    const data = transformations[visualization](embeddings);
     const colors = new Array(texts.length).fill("grey");
     colors[reference] = "red";
-
-    const data = [];
-
-    for (let r = 0; r < embeddingsPca.length; r++) {
-        data.push({ x: embeddingsPca[r][0], y: embeddingsPca[r][1] });
-    }
 
     chart.data = {
         datasets: [
@@ -82,3 +73,32 @@ function initChart(containerId: string): Chart {
         },
     });
 }
+
+type TransformationResults = { x: number; y: number }[];
+
+const transformations = {
+    pca: function (embeddings: number[][]): TransformationResults {
+        const pca = new PCA(embeddings);
+        const embeddingsPca = pca.predict(embeddings);
+
+        const data = [];
+
+        for (let r = 0; r < embeddingsPca.rows; r++) {
+            data.push({ x: embeddingsPca.getRow(r)[0], y: embeddingsPca.getRow(r)[1] });
+        }
+
+        return data;
+    },
+    tsne: function (embeddings: number[][]): TransformationResults {
+        const tsne = new TSNE({ learningRate: 1 });
+        const transformed = tsne.transform(embeddings);
+
+        const data = [];
+
+        for (let r = 0; r < transformed.length; r++) {
+            data.push({ x: transformed[r][0], y: transformed[r][1] });
+        }
+
+        return data;
+    },
+};

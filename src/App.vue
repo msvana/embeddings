@@ -1,9 +1,10 @@
 <template>
-    <ModelSelector @models-updated="onUpdateModels" />
-
     <section class="notification is-danger is-light has-text-centered" v-if="error">
         <p>{{ error }}</p>
     </section>
+
+    <ModelSelector @models-updated="onUpdateModels" />
+    <AdvancedSettings @settings-updated="onUpdateSettings" />
 
     <section class="columns">
         <div class="column is-half-tablet">
@@ -92,7 +93,10 @@
 import type { Ref } from "vue";
 import { ref, watch } from "vue";
 
+import type { Settings } from "@/AdvancedSettings.vue";
 import ModelSelector from "@/ModelSelector.vue";
+import AdvancedSettings from "@/AdvancedSettings.vue";
+
 import * as Embeddings from "@/Embeddings";
 import { plotEmbeddings } from "@/Plot";
 import type { ModelSelection } from "@/Models";
@@ -110,6 +114,7 @@ const modelsSelected: Ref<ModelSelection[]> = ref([]);
 const texts: Ref<{ text: string }[]> = ref([{ text: "" }]);
 const reference: Ref<number> = ref(0);
 const error: Ref<string> = ref("");
+const settings: Ref<Settings> = ref({ visualization: "pca" });
 
 const embeddingsResultsA: Ref<EmbeddingResults> = ref({
     visualized: false,
@@ -126,12 +131,21 @@ const embeddingsResultsB: Ref<EmbeddingResults> = ref({
 });
 
 let firstModelUpdate: boolean = true;
+let firstSettingsUpdate: boolean = true;
 
 watch(texts, ensureEmptyTextAtEnd, { deep: true });
 
-function onUpdateModels(models: ModelSelection[]) {
-    console.log(models);
+function onUpdateSettings(newSettings: Settings) {
+    settings.value = newSettings;
 
+    if (!firstSettingsUpdate) {
+        updateEmbeddings();
+    }
+
+    firstSettingsUpdate = false;
+}
+
+function onUpdateModels(models: ModelSelection[]) {
     modelsSelected.value = models;
 
     if (modelsSelected.value.length == 1) {
@@ -220,7 +234,7 @@ async function updateEmbeddingsForModel(modelSelection: ModelSelection, results:
             results.embeddings = await Embeddings.openaiEmbeddings(
                 texts,
                 modelSelection.apiKey,
-                embeddingModel
+                embeddingModel,
             );
             break;
         case "Mistral":
@@ -236,7 +250,13 @@ async function updateEmbeddingsForModel(modelSelection: ModelSelection, results:
     });
 
     if (texts.length >= 2) {
-        plotEmbeddings(texts, results.embeddings, results.plotContainerId, reference.value);
+        plotEmbeddings(
+            texts,
+            results.embeddings,
+            results.plotContainerId,
+            reference.value,
+            settings.value.visualization,
+        );
         results.visualized = true;
     }
 }
