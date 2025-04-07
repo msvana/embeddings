@@ -44,7 +44,7 @@
                         &nbsp;
                         <span
                             class="tag is-info is-medium mb-1"
-                            v-if="embeddingsResultsB.distances.length > idx">
+                            v-if="embeddingsResultsB.embeddings.length > idx">
                             {{ modelsSelected[1].name }}:&nbsp;
                             <b>{{ embeddingsResultsB.distances[idx].toFixed(3) }}</b>
                         </span>
