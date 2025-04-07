@@ -103,13 +103,15 @@ function modelSelected() {
         modelA.value.apiKey = "";
     }
 
-    const [providerB, idB] = modelIdB.value.split(":");
-    const modelBSelected = MODELS_AVAILABLE[providerB][parseInt(idB)];
-    modelB.value.name = providerB + ":" + modelBSelected.name;
-    modelB.value.apiKeyRequired = modelBSelected.apiKeyRequired;
+    if (modelIdB.value !== "none") {
+        const [providerB, idB] = modelIdB.value.split(":");
+        const modelBSelected = MODELS_AVAILABLE[providerB][parseInt(idB)];
+        modelB.value.name = providerB + ":" + modelBSelected.name;
+        modelB.value.apiKeyRequired = modelBSelected.apiKeyRequired;
 
-    if (!modelB.value.apiKeyRequired) {
-        modelB.value.apiKey = "";
+        if (!modelB.value.apiKeyRequired) {
+            modelB.value.apiKey = "";
+        }
     }
 
     modelUpdated();
