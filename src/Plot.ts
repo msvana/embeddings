@@ -1,7 +1,7 @@
 import type { ChartItem } from "chart.js";
 import Chart from "chart.js/auto";
 import { PCA } from "ml-pca";
-import { TSNE } from "tsne";
+import { TSNE } from "msvana-tsne";
 
 const charts: { [key: string]: Chart } = {};
 
