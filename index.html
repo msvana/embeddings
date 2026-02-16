@@ -13,6 +13,23 @@
     </head>
 
     <body class="m-3">
+        <script>
+            var _paq = (window._paq = window._paq || []);
+            _paq.push(["trackPageView"]);
+            _paq.push(["enableLinkTracking"]);
+            (function () {
+                var u = "//matomo.svana.name/";
+                _paq.push(["setTrackerUrl", u + "matomo.php"]);
+                _paq.push(["setSiteId", "2"]);
+                var d = document,
+                    g = d.createElement("script"),
+                    s = d.getElementsByTagName("script")[0];
+                g.async = true;
+                g.src = u + "matomo.js";
+                s.parentNode.insertBefore(g, s);
+            })();
+        </script>
+
         <div class="container">
             <header class="mb-3 has-text-centered">
                 <h1 class="is-size-3 py-3">Text embeddings playground</h1>
